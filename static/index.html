@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCI DSS v4.0 Scope Reduction · CardShield</title>
+<style>
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --border: #30363d; --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+  --accent: #a371f7; --green: #3fb950; --blue: #58a6ff;
+  --orange: #d29922; --red: #f85149;
+  --red-bg: rgba(248,81,73,0.15); --yellow-bg: rgba(210,153,34,0.15); --green-bg: rgba(63,185,80,0.15);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; font-size: 14px; line-height: 1.6; }
+header { background: linear-gradient(135deg, #1c2128 0%, #0d1117 100%); border-bottom: 1px solid var(--border); padding: 24px 32px; }
+header h1 { margin: 0 0 8px; font-size: 24px; background: linear-gradient(90deg, #a371f7 0%, #58a6ff 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+header .subtitle { color: var(--text2); font-size: 13px; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; padding: 24px 32px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+.kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+.kpi .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.kpi .value { font-size: 26px; font-weight: bold; }
+.kpi.good .value { color: var(--green); }
+.kpi.warn .value { color: var(--orange); }
+.kpi.bad .value { color: var(--red); }
+.kpi .sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+.tabs { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 32px; }
+.tab { padding: 12px 20px; cursor: pointer; border: none; background: none; color: var(--text2);
+  font-size: 14px; font-family: inherit; border-bottom: 2px solid transparent; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+main { padding: 24px 32px; max-width: 1500px; }
+
+.toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.toolbar select, .toolbar input {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+.toolbar input { flex: 1; min-width: 240px; }
+.toolbar input:focus, .toolbar select:focus { border-color: var(--accent); outline: none; }
+.toolbar .btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit; }
+.toolbar .btn:hover { border-color: var(--accent); }
+.toolbar .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+table { width: 100%; border-collapse: collapse; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 13px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+th { background: var(--bg3); color: var(--text2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+tr:hover td { background: #1c2128; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge.compliant { background: var(--green-bg); color: var(--green); }
+.badge.partial { background: var(--yellow-bg); color: var(--orange); }
+.badge.non { background: var(--red-bg); color: var(--red); }
+.badge.na { background: var(--bg3); color: var(--text3); }
+.badge.noteval { background: var(--bg3); color: var(--text3); }
+.badge.zone-cde { background: var(--red-bg); color: var(--red); }
+.badge.zone-connected { background: var(--yellow-bg); color: var(--orange); }
+.badge.zone-out { background: var(--green-bg); color: var(--green); }
+.badge.severity-CRITICAL { background: var(--red-bg); color: var(--red); }
+.badge.severity-HIGH { background: var(--yellow-bg); color: var(--orange); }
+.badge.severity-MEDIUM { background: var(--bg3); color: var(--text2); }
+.badge.severity-LOW { background: var(--green-bg); color: var(--green); }
+.badge.yes { background: var(--green-bg); color: var(--green); }
+.badge.no { background: var(--red-bg); color: var(--red); }
+.badge.open { background: var(--red-bg); color: var(--red); }
+.badge.remediated { background: var(--green-bg); color: var(--green); }
+
+code { font-family: "SF Mono", monospace; background: var(--bg3); padding: 1px 6px; border-radius: 3px; font-size: 12px; color: var(--orange); }
+
+.modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal.open { display: flex; }
+.modal-content { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px 32px; max-width: 720px; width: 90%; max-height: 85vh; overflow-y: auto; }
+.modal h3 { margin: 0 0 16px; color: var(--accent); }
+.modal .close { float: right; cursor: pointer; color: var(--text2); font-size: 20px; background: none; border: none; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 10px 20px; border-radius: 6px; font-size: 13px; z-index: 9999; }
+
+.scope-bar { display: flex; height: 36px; border-radius: 8px; overflow: hidden; margin: 16px 0; }
+.scope-bar div { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; }
+.scope-bar .cde { background: var(--red); }
+.scope-bar .connected { background: var(--orange); }
+.scope-bar .out { background: var(--green); }
+
+.engine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.engine-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.engine-card .name { color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+.engine-card .meta { color: var(--text2); font-size: 12px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💳 PCI DSS v4.0 Scope Reduction · CardShield</h1>
+  <div class="subtitle">Project CardShield · 12 PCI Requirements + CDE Network Isolation + PanHunter + AES-256-GCM Tokenization · v1.0</div>
+</header>
+
+<div class="kpis" id="kpis">
+  <div class="kpi good"><div class="label">PCI Compliance</div><div class="value" id="kpi-pct">-</div><div class="sub" id="kpi-pct-sub">-</div></div>
+  <div class="kpi"><div class="label">CDE Scope</div><div class="value" id="kpi-cde">-</div><div class="sub" id="kpi-cde-sub">-</div></div>
+  <div class="kpi warn"><div class="label">DLP Critical</div><div class="value" id="kpi-dlp">-</div><div class="sub" id="kpi-dlp-sub">-</div></div>
+  <div class="kpi bad"><div class="label">SAD Violations</div><div class="value" id="kpi-sad">-</div><div class="sub">CVV / Expiry 存储</div></div>
+  <div class="kpi good"><div class="label">Tokens Issued</div><div class="value" id="kpi-tokens">-</div><div class="sub">AES-256-GCM</div></div>
+  <div class="kpi"><div class="label">Evidence Items</div><div class="value" id="kpi-evidence">-</div><div class="sub">SHA-256 防篡改</div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="reqs">📋 12 Requirements</button>
+  <button class="tab" data-tab="cde">🌐 CDE Network</button>
+  <button class="tab" data-tab="dlp">🔍 PanHunter DLP</button>
+  <button class="tab" data-tab="tokens">🔐 Tokenization</button>
+  <button class="tab" data-tab="saq">📝 SAQ-D</button>
+  <button class="tab" data-tab="engines">⚙️ Engines</button>
+</div>
+
+<main>
+
+<!-- Requirements Panel -->
+<div class="panel active" id="panel-reqs">
+  <div class="toolbar">
+    <select id="req-principle">
+      <option value="">全部 Principle</option>
+      <option value="1">1. Build & Maintain Network</option>
+      <option value="2">2. Protect Account Data</option>
+      <option value="3">3. Vulnerability Mgmt</option>
+      <option value="4">4. Strong Access Control</option>
+      <option value="5">5. Monitor & Test</option>
+      <option value="6">6. Maintain IS Policy</option>
+    </select>
+    <select id="req-status">
+      <option value="">全部状态</option>
+      <option value="COMPLIANT">Compliant</option>
+      <option value="PARTIAL">Partial</option>
+      <option value="NON_COMPLIANT">Non-Compliant</option>
+      <option value="NOT_APPLICABLE">N/A</option>
+      <option value="NOT_EVALUATED">Not Evaluated</option>
+    </select>
+    <span style="color:var(--text2); font-size:12px;" id="req-count"></span>
+  </div>
+  <table>
+    <thead><tr><th>Req</th><th>Principle</th><th>Title</th><th>Sub-reqs</th><th>Status</th><th>Owner</th><th>操作</th></tr></thead>
+    <tbody id="req-tbody"></tbody>
+  </table>
+</div>
+
+<!-- CDE Panel -->
+<div class="panel" id="panel-cde">
+  <div class="toolbar">
+    <span style="color:var(--text2); font-size:13px;">CDE 范围缩减可视化（目标: CDE ≤ 20% / CONNECTED ≤ 30% / OUT_OF_SCOPE ≥ 50%）</span>
+    <span style="color:var(--text2); font-size:12px;" id="cde-count"></span>
+  </div>
+  <div class="scope-bar" id="scope-bar"></div>
+  <table>
+    <thead><tr><th>Asset Name</th><th>Type</th><th>IP</th><th>Zone</th><th>In Scope?</th><th>TLS</th><th>Encryption</th><th>Last Scanned</th></tr></thead>
+    <tbody id="cde-tbody"></tbody>
+  </table>
+</div>
+
+<!-- DLP Panel -->
+<div class="panel" id="panel-dlp">
+  <div class="toolbar">
+    <select id="dlp-severity">
+      <option value="">全部严重度</option>
+      <option value="CRITICAL">Critical</option>
+      <option value="HIGH">High</option>
+      <option value="MEDIUM">Medium</option>
+      <option value="LOW">Low</option>
+    </select>
+    <select id="dlp-status">
+      <option value="">全部状态</option>
+      <option value="OPEN">Open</option>
+      <option value="REMEDIATED">Remediated</option>
+      <option value="FALSE_POSITIVE">False Positive</option>
+    </select>
+    <button class="btn primary" onclick="showScanModal()">🔍 Scan Text (adhoc)</button>
+    <span style="color:var(--text2); font-size:12px;" id="dlp-count"></span>
+  </div>
+  <table>
+    <thead><tr><th>Source File</th><th>Line</th><th>Pattern</th><th>Sample (redacted)</th><th>Luhn?</th><th>Severity</th><th>Status</th><th>操作</th></tr></thead>
+    <tbody id="dlp-tbody"></tbody>
+  </table>
+</div>
+
+<!-- Tokens Panel -->
+<div class="panel" id="panel-tokens">
+  <div class="toolbar">
+    <button class="btn primary" onclick="showTokenizeModal()">🔐 Tokenize 新 PAN</button>
+    <select id="token-brand">
+      <option value="">全部卡组织</option>
+      <option>Visa</option><option>MasterCard</option><option>Amex</option>
+      <option>JCB</option><option>UnionPay</option><option>Discover</option>
+    </select>
+    <span style="color:var(--text2); font-size:12px;" id="token-count"></span>
+  </div>
+  <table>
+    <thead><tr><th>Token ID</th><th>Masked PAN</th><th>BIN</th><th>Last 4</th><th>Card Brand</th><th>Created</th></tr></thead>
+    <tbody id="token-tbody"></tbody>
+  </table>
+</div>
+
+<!-- SAQ-D Panel -->
+<div class="panel" id="panel-saq">
+  <table>
+    <thead><tr><th>Req</th><th>Question</th><th>Response</th><th>Evidence Summary</th><th>Assessed By</th></tr></thead>
+    <tbody id="saq-tbody"></tbody>
+  </table>
+</div>
+
+<!-- Engines Panel -->
+<div class="panel" id="panel-engines">
+  <div class="toolbar">
+    <button class="btn primary" onclick="runAllEngines()">🚀 一键运行全部 4 个引擎</button>
+  </div>
+  <h3 class="section-title" style="margin-top:8px;">⚙️ 4 个 Collector Engine</h3>
+  <div class="engine-grid" id="engine-grid"></div>
+</div>
+
+</main>
+
+<footer style="text-align:center; padding:24px; color:var(--text3); font-size:12px;">
+  Project CardShield · PCI DSS v4.0 Scope Reduction & Audit Engine · MIT License · 仅供面试展示
+</footer>
+
+<!-- Modals -->
+<div class="modal" id="modal-req">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('modal-req')">×</button>
+    <h3 id="modal-req-title">-</h3>
+    <div id="modal-req-body"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-tokenize">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('modal-tokenize')">×</button>
+    <h3>🔐 Tokenize PAN</h3>
+    <p style="color:var(--text2); font-size:12px;">输入完整 PAN，系统将通过 AES-256-GCM 生成 token + 检测 Luhn + 识别卡组织</p>
+    <input type="text" id="pan-input" placeholder="如 4111111111111111" style="width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:10px; border-radius:6px; margin-bottom:12px; font-family:monospace;">
+    <button class="btn primary" onclick="submitTokenize()">Tokenize</button>
+    <div id="tokenize-result" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-scan">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('modal-scan')">×</button>
+    <h3>🔍 Adhoc PanHunter 扫描</h3>
+    <p style="color:var(--text2); font-size:12px;">粘贴待扫描文本（log / JSON / SQL / CSV 等），系统会自动检测 PAN/CVV/Expiry</p>
+    <input type="text" id="scan-source" placeholder="source file name" style="width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:8px; border-radius:6px; margin-bottom:8px;">
+    <textarea id="scan-text" rows="8" placeholder="粘贴待扫描内容..." style="width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:8px; border-radius:6px; margin-bottom:12px; font-family:monospace;"></textarea>
+    <button class="btn primary" onclick="submitScan()">Scan</button>
+    <div id="scan-result" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let allReqs = [], allAssets = [], allFindings = [], allTokens = [], allSAQ = [];
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'engines') loadEnginesPanel();
+    if (btn.dataset.tab === 'saq') loadSAQ();
+  });
+});
+
+async function init() {
+  await Promise.all([loadStats(), loadReqs(), loadFindings(), loadTokens()]);
+  setupFilters();
+}
+
+async function loadStats() {
+  const s = await fetch(API + '/stats').then(r => r.json());
+  document.getElementById('kpi-pct').textContent = s.pci.compliance_pct + '%';
+  document.getElementById('kpi-pct-sub').textContent = `${s.pci.compliant} / ${s.pci.total_requirements} compliant`;
+  const cdeZone = s.cde_assets.by_zone;
+  const cdeCount = (cdeZone.CDE || 0);
+  const totalAssets = s.cde_assets.total;
+  document.getElementById('kpi-cde').textContent = cdeCount + '/' + totalAssets;
+  document.getElementById('kpi-cde-sub').textContent = `Scope reduction: ${s.cde_assets.scope_reduction_pct}%`;
+  document.getElementById('kpi-dlp').textContent = s.dlp.critical_open;
+  document.getElementById('kpi-dlp-sub').textContent = `${s.dlp.total_findings} total findings`;
+  document.getElementById('kpi-sad').textContent = s.dlp.sad_violations;
+  document.getElementById('kpi-tokens').textContent = s.tokens.issued;
+  // Evidence count
+  const ev = await fetch(API + '/audit/trail?limit=1').catch(() => null);
+}
+
+async function loadReqs() {
+  allReqs = await fetch(API + '/requirements').then(r => r.json());
+  renderReqs();
+}
+async function loadAssets() {
+  allAssets = await fetch(API + '/assets').then(r => r.json());
+  renderAssets();
+}
+async function loadFindings() {
+  allFindings = await fetch(API + '/dlp-findings').then(r => r.json());
+  renderFindings();
+}
+async function loadTokens() {
+  allTokens = await fetch(API + '/tokens').then(r => r.json());
+  renderTokens();
+}
+async function loadSAQ() {
+  allSAQ = await fetch(API + '/saq-d').then(r => r.json());
+  document.getElementById('saq-tbody').innerHTML = allSAQ.map(s => `
+    <tr>
+      <td><code>Req ${s.req_id}</code></td>
+      <td style="font-size:12px;">${s.question}</td>
+      <td><span class="badge ${s.response.toLowerCase()}">${s.response}</span></td>
+      <td style="font-size:12px; color:var(--text2);">${s.evidence_summary || '-'}</td>
+      <td style="font-size:12px;">${s.assessed_by}</td>
+    </tr>
+  `).join('');
+}
+
+function renderReqs() {
+  const p = document.getElementById('req-principle').value;
+  const st = document.getElementById('req-status').value;
+  const filtered = allReqs.filter(c => {
+    if (p && String(c.principle_id) !== p) return false;
+    if (st && c.status !== st) return false;
+    return true;
+  });
+  document.getElementById('req-count').textContent = `${filtered.length} / ${allReqs.length} req`;
+  const statusBadge = s => {
+    if (s === 'COMPLIANT') return '<span class="badge compliant">Compliant</span>';
+    if (s === 'PARTIAL') return '<span class="badge partial">Partial</span>';
+    if (s === 'NON_COMPLIANT') return '<span class="badge non">Non-Compliant</span>';
+    if (s === 'NOT_APPLICABLE') return '<span class="badge na">N/A</span>';
+    return '<span class="badge noteval">Not Evaluated</span>';
+  };
+  document.getElementById('req-tbody').innerHTML = filtered.map(r => `
+    <tr>
+      <td><code>Req ${r.req_id}</code></td>
+      <td style="font-size:11px; color:var(--text2);">P${r.principle_id}</td>
+      <td>${r.title}</td>
+      <td style="font-size:11px;">${(r.sub_requirements_list || []).join(', ')}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="font-size:12px;">${r.owner}</td>
+      <td><button class="btn" onclick="showReq('${r.req_id}')">详情</button></td>
+    </tr>
+  `).join('');
+}
+
+function renderAssets() {
+  // Scope bar
+  const cdeCount = allAssets.filter(a => a.cde_zone === 'CDE').length;
+  const connCount = allAssets.filter(a => a.cde_zone === 'CONNECTED').length;
+  const outCount = allAssets.filter(a => a.cde_zone === 'OUT_OF_SCOPE').length;
+  const total = allAssets.length;
+  const cdePct = cdeCount / total * 100;
+  const connPct = connCount / total * 100;
+  const outPct = outCount / total * 100;
+  document.getElementById('scope-bar').innerHTML = `
+    <div class="cde" style="width:${cdePct}%">CDE ${cdeCount} (${cdePct.toFixed(0)}%)</div>
+    <div class="connected" style="width:${connPct}%">CONNECTED ${connCount} (${connPct.toFixed(0)}%)</div>
+    <div class="out" style="width:${outPct}%">OUT_OF_SCOPE ${outCount} (${outPct.toFixed(0)}%)</div>
+  `;
+  document.getElementById('cde-count').textContent = `${total} assets / ${outCount} (${outPct.toFixed(0)}%) OUT_OF_SCOPE`;
+
+  document.getElementById('cde-tbody').innerHTML = allAssets.map(a => `
+    <tr>
+      <td>${a.asset_name}</td>
+      <td style="font-size:12px; color:var(--text2);">${a.asset_type}</td>
+      <td><code style="font-size:11px;">${a.ip_address}</code></td>
+      <td><span class="badge zone-${a.cde_zone.toLowerCase().replace('_', '-')}">${a.cde_zone}</span></td>
+      <td>${a.in_cde_scope ? '<span class="badge non">In Scope</span>' : '<span class="badge compliant">Out</span>'}</td>
+      <td>${a.tls_version || '-'}</td>
+      <td>${a.encryption_at_rest ? '<span class="badge compliant">✓</span>' : '<span class="badge non">✗</span>'}</td>
+      <td style="font-size:11px; color:var(--text2);">${a.last_scanned_at.substring(0,19).replace('T',' ')}</td>
+    </tr>
+  `).join('');
+}
+
+function renderFindings() {
+  const sev = document.getElementById('dlp-severity').value;
+  const st = document.getElementById('dlp-status').value;
+  const filtered = allFindings.filter(f => {
+    if (sev && f.severity !== sev) return false;
+    if (st && f.status !== st) return false;
+    return true;
+  });
+  document.getElementById('dlp-count').textContent = `${filtered.length} / ${allFindings.length} findings`;
+  document.getElementById('dlp-tbody').innerHTML = filtered.map(f => `
+    <tr>
+      <td><code style="font-size:11px;">${f.source_file}</code></td>
+      <td>${f.line_number}</td>
+      <td>${f.detected_pattern.replace(/_/g, ' ')}</td>
+      <td><code style="font-size:11px;">${f.sample_redacted}</code></td>
+      <td>${f.luhn_valid ? '<span class="badge compliant">✓ Luhn</span>' : '-'}</td>
+      <td><span class="badge severity-${f.severity}">${f.severity}</span></td>
+      <td><span class="badge ${f.status.toLowerCase()}">${f.status}</span></td>
+      <td>${f.status === 'OPEN' ? `
+        <button class="btn" onclick="markRemediated('${f.finding_id}')">✓ Remediated</button>
+        <button class="btn" onclick="markFalsePositive('${f.finding_id}')">⊘ FP</button>` : '-'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderTokens() {
+  const b = document.getElementById('token-brand').value;
+  const filtered = allTokens.filter(t => !b || t.card_brand === b);
+  document.getElementById('token-count').textContent = `${filtered.length} / ${allTokens.length} tokens`;
+  document.getElementById('token-tbody').innerHTML = filtered.map(t => `
+    <tr>
+      <td><code style="font-size:11px;">${t.token_id.substring(0,8)}...</code></td>
+      <td><code>${t.masked_pan}</code></td>
+      <td>${t.pan_bin}</td>
+      <td>${t.pan_last4}</td>
+      <td>${t.card_brand}</td>
+      <td style="font-size:12px; color:var(--text2);">${t.created_at.substring(0,19).replace('T',' ')}</td>
+    </tr>
+  `).join('');
+}
+
+async function showReq(id) {
+  const r = await fetch(`${API}/requirements/${id}`).then(r => r.json());
+  const evRows = (r.recent_evidences || []).map(e => `
+    <tr><td><code>${e.evidence_id.substring(0,8)}</code></td><td>${e.source_name}</td><td><code>${e.sha256_hash.substring(0,16)}...</code></td><td>${e.collected_at.substring(0,19)}</td></tr>
+  `).join('') || '<tr><td colspan=4 style="color:var(--text3);">无 evidence</td></tr>';
+  document.getElementById('modal-req-title').innerHTML = `<code>Req ${r.req_id}</code> · ${r.title}`;
+  document.getElementById('modal-req-body').innerHTML = `
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <span class="badge ${r.status === 'COMPLIANT' ? 'compliant' : r.status === 'PARTIAL' ? 'partial' : r.status === 'NON_COMPLIANT' ? 'non' : r.status === 'NOT_APPLICABLE' ? 'na' : 'noteval'}">${r.status}</span>
+      <span class="badge zone-${r.cde_zone ? '' : ''}" style="background:var(--bg3); color:var(--text2);">P${r.principle_id}</span>
+    </div>
+    <p style="color:var(--text2); margin-bottom:12px;">${r.description}</p>
+    <p style="font-size:12px;"><strong>Sub-requirements:</strong> ${(r.sub_requirements_list || []).join(', ')}</p>
+    <p style="font-size:12px; color:var(--text2);"><strong>Owner:</strong> ${r.owner} | <strong>Last Assessed:</strong> ${r.last_assessed_at || '-'}</p>
+    <h4 style="margin-top:20px; color:var(--accent);">📦 最近 Evidence</h4>
+    <table><thead><tr><th>ID</th><th>Source</th><th>SHA-256</th><th>Collected</th></tr></thead><tbody>${evRows}</tbody></table>
+  `;
+  openModal('modal-req');
+}
+
+async function loadEnginesPanel() {
+  const data = [
+    { name: 'cde_isolation_check', label: 'CDE Network Isolation', criteria: 'Req 1, 2', desc: 'CDE/CONNECTED/OUT_OF_SCOPE 验证 TLS + encryption' },
+    { name: 'panhunter_scan',      label: 'PanHunter DLP Scan',    criteria: 'Req 3, 10', desc: 'Luhn + Regex 检测 PAN/CVV/Expiry 泄漏' },
+    { name: 'tokenization_demo',   label: 'Tokenization Gateway',  criteria: 'Req 3.5, 3.6', desc: 'AES-256-GCM 加密 PAN → token' },
+    { name: 'saq_d_evaluation',    label: 'SAQ-D Rulebook',        criteria: 'Req 1-12', desc: '12 req 自评 + 加权得分' },
+  ];
+  const grid = document.getElementById('engine-grid');
+  grid.innerHTML = data.map(e => `
+    <div class="engine-card">
+      <div class="name">${e.label}</div>
+      <div class="meta">${e.criteria}</div>
+      <div style="color:var(--text2); font-size:12px; margin-bottom:8px;">${e.desc}</div>
+      <button class="btn primary" onclick="runOneEngine('${e.name}')">▶️ Run</button>
+    </div>
+  `).join('');
+}
+
+async function runAllEngines() {
+  toast('🚀 全部 4 个引擎运行中...');
+  await fetch(API + '/collectors/run-all', {method: 'POST'});
+  toast('✅ 完成');
+  await Promise.all([loadStats(), loadReqs(), loadAssets(), loadFindings(), loadTokens()]);
+}
+
+async function runOneEngine(name) {
+  toast(`▶️ ${name} 运行中...`);
+  await fetch(`${API}/collectors/${name}`, {method: 'POST'});
+  toast(`✅ 完成`);
+  await Promise.all([loadStats(), loadReqs(), loadAssets(), loadFindings(), loadTokens()]);
+}
+
+async function markRemediated(id) {
+  await fetch(`${API}/dlp-findings/${id}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: 'REMEDIATED'})
+  });
+  toast('✅ 标记为 REMEDIATED');
+  await loadFindings();
+  await loadStats();
+}
+async function markFalsePositive(id) {
+  await fetch(`${API}/dlp-findings/${id}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: 'FALSE_POSITIVE'})
+  });
+  toast('✅ 标记为 FALSE_POSITIVE');
+  await loadFindings();
+  await loadStats();
+}
+
+function showTokenizeModal() {
+  document.getElementById('pan-input').value = '';
+  document.getElementById('tokenize-result').innerHTML = '';
+  openModal('modal-tokenize');
+}
+async function submitTokenize() {
+  const pan = document.getElementById('pan-input').value.trim();
+  if (!pan) { toast('请输入 PAN'); return; }
+  try {
+    const r = await fetch(API + '/tokens/tokenize', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({pan})
+    }).then(r => r.json());
+    if (r.detail) {
+      document.getElementById('tokenize-result').innerHTML = `<p style="color:var(--red);">❌ ${r.detail}</p>`;
+      return;
+    }
+    document.getElementById('tokenize-result').innerHTML = `
+      <div style="background:var(--bg); padding:12px; border-radius:6px; border:1px solid var(--border);">
+        <p><strong>Masked PAN:</strong> <code>${r.masked_pan}</code></p>
+        <p><strong>Card Brand:</strong> ${r.card_brand}</p>
+        <p><strong>Token Preview:</strong> <code style="font-size:10px; word-break:break-all;">${r.token_preview}</code></p>
+      </div>
+    `;
+    await loadTokens();
+    await loadStats();
+  } catch (e) {
+    toast('Error: ' + e);
+  }
+}
+
+function showScanModal() {
+  document.getElementById('scan-text').value = '';
+  document.getElementById('scan-source').value = 'adhoc.txt';
+  document.getElementById('scan-result').innerHTML = '';
+  openModal('modal-scan');
+}
+async function submitScan() {
+  const text = document.getElementById('scan-text').value;
+  const source = document.getElementById('scan-source').value;
+  if (!text) { toast('请粘贴文本'); return; }
+  const r = await fetch(API + '/collectors/scan-text?' + new URLSearchParams({text, source}), {method: 'POST'}).then(r => r.json());
+  if (r.findings && r.findings.length > 0) {
+    document.getElementById('scan-result').innerHTML = `
+      <h4 style="color:var(--red);">⚠️ 发现 ${r.written_to_db} 条 finding</h4>
+      <table>
+        <thead><tr><th>Pattern</th><th>Line</th><th>Sample</th><th>Severity</th></tr></thead>
+        <tbody>${r.findings.map(f => `<tr><td>${f.detected_pattern}</td><td>${f.line_number}</td><td><code>${f.sample_redacted}</code></td><td><span class="badge severity-${f.severity}">${f.severity}</span></td></tr>`).join('')}</tbody>
+      </table>
+    `;
+  } else {
+    document.getElementById('scan-result').innerHTML = `<p style="color:var(--green);">✅ 未发现 PAN/CVV/Expiry</p>`;
+  }
+  await loadFindings();
+  await loadStats();
+}
+
+function setupFilters() {
+  ['req-principle', 'req-status'].forEach(id => document.getElementById(id).addEventListener('change', renderReqs));
+  ['dlp-severity', 'dlp-status'].forEach(id => document.getElementById(id).addEventListener('change', renderFindings));
+  document.getElementById('token-brand').addEventListener('change', renderTokens);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+
+init();
+</script>
+
+</body>
+</html>
